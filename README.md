@@ -41,11 +41,8 @@ To run the service, simply execute the app.py script. The service will listen by
 
 ## API Endpoints
 
-GET /config: Retrieves the current configuration of the service.
+GET /open_cash_drawer
 
-POST /config: Updates the service configuration based on provided JSON data.
-
-POST /config/reset: Resets the configuration to default values.
 
 ### Français
 # Service Web du Tiroir-Caisse
@@ -87,8 +84,4 @@ Vous pouvez personnaliser ces paramètres selon vos besoins.
 Pour exécuter le service, lancez simplement le script app.py. Le service écoutera par défaut sur le port 8443. Vous pouvez modifier le port dans le fichier de configuration si nécessaire.
 
 ## Endpoints de l'API
-GET /config: Récupère la configuration actuelle du service.
-
-POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
-
-POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
+GET /open_cash_drawer
