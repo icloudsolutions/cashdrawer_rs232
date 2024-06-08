@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import serial
 import serial.tools.list_ports
 import time
@@ -12,12 +12,8 @@ app = Flask(__name__)
 executable_dir = os.path.dirname(os.path.abspath(__file__))
 config_file_path = os.path.join(executable_dir, 'config.ini')
 
-def read_config():
-    # Check if the config file exists
-    if not os.path.exists(config_file_path):
-        # Create a default config file if it doesn't exist
-        with open(config_file_path, 'w') as config_file:
-            config_file.write("""; Configuration file for Cash Drawer Web Service
+# Default configuration content
+default_config_content = """; Configuration file for Cash Drawer Web Service
 
 ; [web_service] section defines settings for the Flask web service
 [web_service]
@@ -46,16 +42,27 @@ log_level = INFO
 ; This should match the description of the USB-to-Serial port
 ; Default: USB-to-Serial
 port_description = USB-to-Serial
-""")
+"""
+
+def read_config():
+    # Check if the config file exists
+    if not os.path.exists(config_file_path):
+        # Create a default config file if it doesn't exist
+        with open(config_file_path, 'w') as config_file:
+            config_file.write(default_config_content)
             logging.info("Default config file created at {}".format(config_file_path))
 
     config = configparser.ConfigParser()
     config.read(config_file_path)
     return config
 
+def save_config(config):
+    with open(config_file_path, 'w') as config_file:
+        config.write(config_file)
+    logging.info("Config file updated")
+
 def find_cash_drawer():
     config = read_config()
-    web_service_port = config.getint('web_service', 'port', fallback=8443)
     cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
     
     # Start timing
@@ -99,10 +106,61 @@ def find_cash_drawer():
     logging.error(f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds")
     return jsonify({'error': f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds"}), 404
 
+@app.route('/config', methods=['GET'])
+def view_config():
+    config = read_config()
+    return jsonify(config._sections), 200
+
+@app.route('/config', methods=['POST'])
+def update_config():
+    config = read_config()
+    data = request.json
+    
+    for section, options in data.items():
+        if section not in config:
+            config.add_section(section)
+        for option, value in options.items():
+            config.set(section, option, str(value))
+    
+    save_config(config)
+    
+    return jsonify({'message': 'Configuration updated successfully'}), 200
+
+@app.route('/config/reset', methods=['POST'])
+def reset_config():
+    with open(config_file_path, 'w') as config_file:
+        config_file.write(default_config_content)
+    logging.info("Config file reset")
+    return jsonify({'message': 'Configuration reset successfully'}), 200
+
 @app.route('/open_cash_drawer', methods=['GET'])
 def open_cash_drawer():
     result, status_code = find_cash_drawer()
     return result, status_code
+
+@app.route('/port-properties', methods=['GET'])
+def get_port_properties():
+    config = read_config()
+    cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
+    
+    for port in serial.tools.list_ports.comports():
+        if cash_drawer_port_description in port.description:
+            port_properties = {
+                'name': port.name,
+                'description': port.description,
+                'device': port.device,
+                'hwid': port.hwid,
+                'vid': port.vid,
+                'pid': port.pid,
+                'serial_number': port.serial_number
+            }
+            return jsonify(port_properties), 200
+    
+    return jsonify({'error': 'Selected serial port not found.'}), 404
+
+@app.route('/status', methods=['GET'])
+def get_service_status():
+    return jsonify({'status': 'The web service is running.'}), 200
 
 if __name__ == '__main__':
     config = read_config()
@@ -117,4 +175,4 @@ if __name__ == '__main__':
     logging.basicConfig(filename=log_file_path, level=log_level,
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
-    app.run(debug=debug_mode, port=web_service_port)
+    app.run(debug=debug_mode, port=int(web_service_port))
