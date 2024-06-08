@@ -117,4 +117,4 @@ if __name__ == '__main__':
     logging.basicConfig(filename=log_file_path, level=log_level,
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
-    app.run(debug=debug_mode, port=web_service_port)
+    app.run(debug=debug_mode, port=int(web_service_port))
