@@ -17,6 +17,8 @@ You can install these dependencies by running the following command:
 ```bash
 pip install flask pyserial
 
+```
+
 ## Configuration
 The service uses a config.ini configuration file to define various parameters. The configuration file is automatically created if it does not exist, with default values.
 
@@ -31,3 +33,5 @@ log_level = INFO
 
 [cash_drawer]
 port_description = USB-to-Serial
+```
+
