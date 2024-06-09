@@ -38,10 +38,16 @@ port_description = USB-to-Serial
 You can customize these parameters according to your needs.
 
 ## Usage
-To run the service, simply execute the app.py script. The service will listen by default on port 8443. You can modify the port in the configuration file if necessary.
+To run the service, simply execute script. The service will listen by default on port 8443. You can modify the port in the configuration file if necessary.
 
 ## API Endpoints
+GET /open_cash_drawer : open the cash drawer.
 
+GET /config: Récupère la configuration actuelle du service.
+
+POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
+
+POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
 
 ## TODO Endpoints
 webpages home, service, config..
