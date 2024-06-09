@@ -41,13 +41,13 @@ To run the service, simply execute the app.py script. The service will listen by
 
 ## API Endpoints
 
-GET /open_cash_drawer : open cash drawer.
 
-GET /config: Retrieves the current configuration of the service.
+## TODO Endpoints
+GET /config: Récupère la configuration actuelle du service.
 
-POST /config: Updates the service configuration based on provided JSON data.
+POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
 
-POST /config/reset: Resets the configuration to default values.
+POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
 
 ### Français
 # Service Web du Tiroir-Caisse
@@ -90,15 +90,3 @@ Pour exécuter le service, lancez simplement le script app.py. Le service écout
 
 ## Endpoints de l'API
 
-GET /open_cash_drawer : open cash drawer.
-
-GET /config: Récupère la configuration actuelle du service.
-
-POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
-
-POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
-
-## //TODO 
-
-# Run the app with SSL
-# add  webpages : home, config, port, reset, service
