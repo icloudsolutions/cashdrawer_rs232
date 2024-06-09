@@ -97,3 +97,8 @@ GET /config: Récupère la configuration actuelle du service.
 POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
 
 POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
+
+## //TODO 
+
+# Run the app with SSL
+# add  webpages : home, config, port, reset, service
