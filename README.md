@@ -41,7 +41,6 @@ To run the service, simply execute the app.py script. The service will listen by
 
 ## API Endpoints
 
-GET /open_cash_drawer
 
 ## TODO Endpoints
 GET /config: Récupère la configuration actuelle du service.
@@ -90,11 +89,4 @@ Vous pouvez personnaliser ces paramètres selon vos besoins.
 Pour exécuter le service, lancez simplement le script app.py. Le service écoutera par défaut sur le port 8443. Vous pouvez modifier le port dans le fichier de configuration si nécessaire.
 
 ## Endpoints de l'API
-GET /open_cash_drawer
 
-## TODO Endpoints
-GET /config: Récupère la configuration actuelle du service.
-
-POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
-
-POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
