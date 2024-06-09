@@ -49,44 +49,4 @@ POST /config: Met à jour la configuration du service en fonction des données J
 
 POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
 
-### Français
-# Service Web du Tiroir-Caisse
-
-Ce projet consiste en un service web Flask conçu pour contrôler un tiroir-caisse via un port série.
-
-## Prérequis
-Avant d'exécuter ce service, assurez-vous d'avoir installé les dépendances suivantes :
-
-Python 3.x
-Flask
-pySerial
-Vous pouvez installer ces dépendances en exécutant la commande suivante :
-
-```bash
-pip install flask pyserial
-```
-
-## Configuration
-Le service utilise un fichier de configuration config.ini pour définir différents paramètres. Le fichier de configuration est créé automatiquement s'il n'existe pas, avec des valeurs par défaut.
-
-exemple de fichier de configuration :
-
-```bash
-; Fichier de configuration pour le Service Web du Tiroir-Caisse
-
-[web_service]
-port = 8443
-debug = True
-log_file = cash_drawer.log
-log_level = INFO
-
-[cash_drawer]
-port_description = USB-to-Serial
-```
-Vous pouvez personnaliser ces paramètres selon vos besoins.
-
-## Utilisation
-Pour exécuter le service, lancez simplement le script app.py. Le service écoutera par défaut sur le port 8443. Vous pouvez modifier le port dans le fichier de configuration si nécessaire.
-
-## Endpoints de l'API
 
