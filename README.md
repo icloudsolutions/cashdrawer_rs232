@@ -50,6 +50,6 @@ POST /config: Met à jour la configuration du service en fonction des données J
 POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
 
 ## TODO Endpoints
-webpages home, service, config..
+verify and adjust root and webpages home, service, config..
 
 
