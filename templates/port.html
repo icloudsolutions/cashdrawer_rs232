@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Port Information - iCloud Solution POS Integration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        function fetchPortProperties() {
+            fetch('/port')
+                .then(response => response.json())
+                .then(data => {
+                    const portInfo = document.getElementById('port-info');
+                    if (data.error) {
+                        portInfo.innerHTML = `<p>${data.error}</p>`;
+                    } else {
+                        portInfo.innerHTML = `
+                            <ul>
+                                <li>Name: ${data.name}</li>
+                                <li>Description: ${data.description}</li>
+                                <li>Device: ${data.device}</li>
+                                <li>HWID: ${data.hwid}</li>
+                                <li>VID: ${data.vid}</li>
+                                <li>PID: ${data.pid}</li>
+                                <li>Serial Number: ${data.serial_number}</li>
+                            </ul>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('port-info').innerHTML = `<p>Error: ${error.toString()}</p>`;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchPortProperties);
+    </script>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='ics_logo.png') }}" alt="Logo iCloud Solution">
+        <h1>iCloud Solution POS Integration</h1>
+    </header>
+    <main>
+        <h2>Port Information</h2>
+        <div id="port-info"></div>
+        <a href="/">Back to Home</a>
+    </main>
+    <footer>
+        <p>&copy; 2024 <a href="https://icloud-solutions.net" target="_blank">iCloud Solution</a>. Tous droits réservés.</p>
+    </footer>
+</body>
+</html>

@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, redirect, url_for, render_template
 import serial
 import serial.tools.list_ports
 import time
@@ -138,10 +138,23 @@ def find_cash_drawer():
     logging.error(f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds")
     return jsonify({'error': f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds"}), 404
 
-@app.route('/config', methods=['GET'])
-def view_config():
-    config = read_config()
-    return jsonify(config._sections), 200
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+
+
+@app.route('/config', methods=['GET', 'POST'])
+def config():
+    if request.method == 'POST':
+        config_content = request.form['config']
+        with open(config_file_path, 'w') as config_file:
+            config_file.write(config_content)
+        return redirect(url_for('config'))
+    else:
+        with open(config_file_path, 'r') as config_file:
+            config_content = config_file.read()
+        return render_template('config.html', config=config_content)
 
 @app.route('/config', methods=['POST'])
 def update_config():
@@ -164,17 +177,22 @@ def reset_config():
         config_file.write(default_config_content)
     logging.info("Config file reset")
     return jsonify({'message': 'Configuration reset successfully'}), 200
+# TODO redirect after port update 
 
 @app.route('/open_cash_drawer', methods=['GET'])
 def open_cash_drawer():
     result, status_code = find_cash_drawer()
     return result, status_code
 
-@app.route('/port', methods=['GET'])
+@app.route('/port')
+def port():
+    return render_template('port.html')
+
+@app.route('/port/properties', methods=['GET'])
 def get_port_properties():
     config = read_config()
-    cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
-    
+    cash_drawer_port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
+
     for port in serial.tools.list_ports.comports():
         if cash_drawer_port_description in port.description:
             port_properties = {
@@ -187,10 +205,14 @@ def get_port_properties():
                 'serial_number': port.serial_number
             }
             return jsonify(port_properties), 200
-    
+
     return jsonify({'error': 'Selected serial port not found.'}), 404
 
-@app.route('/status', methods=['GET'])
+@app.route('/service')
+def service():
+    return render_template('service.html')
+
+@app.route('/service/status', methods=['GET'])
 def get_service_status():
     return jsonify({'status': 'The web service is running.'}), 200
 

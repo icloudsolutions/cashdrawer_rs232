@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Management - iCloud Solution POS Integration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='ics_logo.png') }}" alt="Logo iCloud Solution">
+        <h1>iCloud Solution POS Integration</h1>
+    </header>
+    <main>
+        <h2>Configuration Management</h2>
+        <form id="config-form" method="post" action="/config">
+            <textarea name="config" rows="20" cols="80">{{ config }}</textarea><br>
+            <button type="submit">Save Configuration</button>
+        </form>
+        <a href="/">Back to Home</a>
+    </main>
+    <footer>
+        <p>&copy; 2024 <a href="https://icloud-solutions.net" target="_blank">iCloud Solution</a>. Tous droits réservés.</p>
+    </footer>
+</body>
+</html>
