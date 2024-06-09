@@ -17,37 +17,35 @@ config_file_path = os.path.join(executable_dir, 'config.ini')
 # Default configuration content
 default_config_content = """; Configuration file for Cash Drawer Web Service
 
-; [web_service] section defines settings for the Flask web service
+; [web_service] section defines settings for the web service
 [web_service]
-; Port number on which the web service should run
-; Default: 8443
+; Port number on which the web service should run. Default: 8443
 port = 8443
 
 [SSL]
 certificate_path = 
 certificate_key_path = 
 
-; Enable or disable debug mode
-; Set to True for development, False for production
-; Default: True
+[LOG]
+; Enable or disable debug mode. Set to True for development, False for production. Default: True
 debug = True
 
-; Path to the log file
-; Specify the location where log messages should be written
-; Default: cash_drawer.log
+; Path to the log file. Specify the location where log messages should be written. Default: cash_drawer.log
 log_file = cash_drawer.log
 
-; Logging level for the application
-; Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
-; Default: INFO
+; Logging level for the application. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL. Default: INFO
 log_level = INFO
 
-; [cash_drawer] section defines settings specific to the cash drawer
-[cash_drawer]
-; Description of the serial port where the cash drawer is connected
-; This should match the description of the USB-to-Serial port
-; Default: USB-to-Serial
+[cash_drawer_port]
+; Description of the serial port where the cash drawer is connected. Default: USB-to-Serial
 port_description = USB-to-Serial
+
+; Command to open the cash drawer. Default: \x1B\x70\x00\x19\xFA
+open_command = \x1B\x70\x00\x19\xFA
+
+baud_rate = 9600
+
+timeout = 1
 """
 
 def read_config():
@@ -93,24 +91,29 @@ def generate_self_signed_cert(cert_path, key_path):
 def find_cash_drawer():
     config = read_config()
     cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
+    cash_drawer_baud_rate = config.getint('cash_drawer', 'baud_rate', fallback=9600)
+    cash_drawer_timeout = config.getint('cash_drawer', 'timeout', fallback=1)
     
     # Start timing
     start_time = time.time()
+    # Get the open command from the configuration
+    open_command = config.get('cash_drawer', 'open_command', fallback='\x1B\x70\x00\x19\xFA')
     
     # Iterate over all available serial ports
     for port in serial.tools.list_ports.comports():
         # Check if the port description contains the desired string
         if cash_drawer_port_description in port.description:
             try:
-                # Open serial port
-                ser = serial.Serial(port.device, 9600, timeout=1)
+                # Open serial port with configurable parameters
+                ser = serial.Serial(port.device, cash_drawer_baud_rate, timeout=cash_drawer_timeout)
+          
                 
                 # The command to open the cash drawer.
                 # This command may vary depending on the manufacturer.
-                command = b'\x1B\x70\x00\x19\xFA'
+                # command = b'\x1B\x70\x00\x19\xFA'
                 
                 # Send the command to the cash drawer
-                ser.write(command)
+                ser.write(open_command.encode())
                 
                 # Read response or wait to ensure command execution
                 response = ser.read(2)  # Adjust read size and timeout as needed
