@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Service Status - iCloud Solution POS Integration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='ics_logo.png') }}" alt="Logo iCloud Solution">
+        <h1>iCloud Solution POS Integration</h1>
+    </header>
+    <main>
+        <h2>Service Status</h2>
+        <p>{{ status }}</p>
+        <a href="/">Back to Home</a>
+    </main>
+    <footer>
+        <p>&copy; 2024 <a href="https://icloud-solutions.net" target="_blank">iCloud Solution</a>. Tous droits réservés.</p>
+    </footer>
+</body>
+</html>

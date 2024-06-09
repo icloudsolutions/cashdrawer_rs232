@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accueil - iCloud Solution POS Integration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script>
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResponse(response) {
+            const responseElement = document.getElementById('response');
+            responseElement.innerHTML = JSON.stringify(response, null, 2);
+            responseElement.style.display = 'block';
+        }
+
+        function handleButtonClick(url) {
+            showLoading();
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(data);
+                    hideLoading();
+                    showResponse(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    hideLoading();
+                    showResponse({ status: "error", message: error.toString() });
+                });
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <img src="{{ url_for('static', filename='ics_logo.png') }}" alt="Logo iCloud Solution">
+        <h1>iCloud Solution POS Integration</h1>
+        <p>Développé en 2024 pour une intégration locale fluide entre Odoo POS et les équipements de point de vente</p>
+    </header>
+    <main>
+        <h2>Bienvenue</h2>
+        <p>Bienvenue dans notre solution d'intégration pour points de vente. Utilisez les boutons ci-dessous pour accéder aux différents services :</p>
+        <button onclick="handleButtonClick('/open_cash_drawer')">Ouvrir le tiroir-caisse</button>
+        <button onclick="handleButtonClick('/config')">Configuration du Service</button>
+        <button onclick="handleButtonClick('/reset')">Réinitialiser la Configuration</button>
+        <button onclick="handleButtonClick('/renew')">Renouveler le Certificat</button>
+        <button onclick="handleButtonClick('/port')">Afficher les Propriétés du Port</button>
+        <div id="response"></div> <!-- Élément pour afficher la réponse -->
+    </main>
+    <footer>
+        <p>&copy; 2024 <a href="https://icloud-solutions.net" target="_blank">iCloud Solution</a>. Tous droits réservés. | <a href="/doc">Documentation des Web Services</a> | <a href="/config">Configuration du Service</a></p>
+    </footer>
+
+    <div id="loading" style="display:none;">
+        <div class="spinner"></div>
+    </div>
+</body>
+</html>
