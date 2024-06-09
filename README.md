@@ -11,6 +11,7 @@ Before running this service, make sure you have installed the following dependen
 - Python 3.x
 - Flask
 - pySerial
+- ...
 
 You can install these dependencies by running the following command:
 
@@ -43,10 +44,6 @@ To run the service, simply execute the app.py script. The service will listen by
 
 
 ## TODO Endpoints
-GET /config: Récupère la configuration actuelle du service.
-
-POST /config: Met à jour la configuration du service en fonction des données JSON fournies.
-
-POST /config/reset: Réinitialise la configuration aux valeurs par défaut.
+webpages home, service, config..
 
 
