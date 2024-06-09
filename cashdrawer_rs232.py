@@ -5,6 +5,8 @@ import serial.tools.list_ports
 import time
 import logging
 import configparser
+import ssl
+from OpenSSL import crypto
 
 app = Flask(__name__)
 
@@ -20,6 +22,10 @@ default_config_content = """; Configuration file for Cash Drawer Web Service
 ; Port number on which the web service should run
 ; Default: 8443
 port = 8443
+
+[SSL]
+certificate_path = 
+certificate_key_path = 
 
 ; Enable or disable debug mode
 ; Set to True for development, False for production
@@ -60,6 +66,29 @@ def save_config(config):
     with open(config_file_path, 'w') as config_file:
         config.write(config_file)
     logging.info("Config file updated")
+
+def generate_self_signed_cert(cert_path, key_path):
+    k = crypto.PKey()
+    k.generate_key(crypto.TYPE_RSA, 2048)
+    cert = crypto.X509()
+    cert.get_subject().C = "TN"
+    cert.get_subject().ST = "whatsup : +21650271737"
+    cert.get_subject().L = "contact@icloud-solutions.net"
+    cert.get_subject().O = "iCloud Solutions"
+    cert.get_subject().OU = "icloud-solutions.net"
+    cert.get_subject().CN = "localhost"
+    cert.set_serial_number(1000)
+    cert.gmtime_adj_notBefore(0)
+    cert.gmtime_adj_notAfter(31536000)  # 1 year
+    cert.set_issuer(cert.get_subject())
+    cert.set_pubkey(k)
+    cert.sign(k, 'sha256')
+
+    with open(cert_path, "wt") as cert_file:
+        cert_file.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode('utf-8'))
+    with open(key_path, "wt") as key_file:
+        key_file.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode('utf-8'))
+    logging.info(f"Self-signed certificate and key generated at {cert_path} and {key_path}")
 
 def find_cash_drawer():
     config = read_config()
@@ -138,7 +167,7 @@ def open_cash_drawer():
     result, status_code = find_cash_drawer()
     return result, status_code
 
-@app.route('/port-properties', methods=['GET'])
+@app.route('/port', methods=['GET'])
 def get_port_properties():
     config = read_config()
     cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
@@ -168,11 +197,31 @@ if __name__ == '__main__':
     debug_mode = config.getboolean('web_service', 'debug', fallback=True)
     log_file_path = config.get('web_service', 'log_file', fallback=os.path.join(executable_dir, 'cash_drawer.log'))
     log_level = config.get('web_service', 'log_level', fallback='INFO')
-    
+    certificate_path = config.get('SSL', 'certificate_path', fallback=os.path.join(executable_dir, 'localhost+2.pem'))
+    certificate_key_path = config.get('SSL', 'certificate_key_path', fallback=os.path.join(executable_dir, 'localhost+2-key.pem'))
+
     # Convert log level string to integer constant
     log_level = getattr(logging, log_level.upper(), logging.INFO)
     
     logging.basicConfig(filename=log_file_path, level=log_level,
                         format='%(asctime)s - %(levelname)s - %(message)s')
     
-    app.run(debug=debug_mode, port=int(web_service_port))
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    if not certificate_path or not os.path.exists(certificate_path) or not certificate_key_path or not os.path.exists(certificate_key_path):
+        logging.warning("SSL certificate or key not found. Generating self-signed certificate.")
+        if not certificate_path:
+            certificate_path = os.path.join(executable_dir, 'localhost+2.pem')
+        if not certificate_key_path:
+            certificate_key_path = os.path.join(executable_dir, 'localhost+2-key.pem')
+        generate_self_signed_cert(certificate_path, certificate_key_path)
+    
+    try:
+        context.load_cert_chain(certfile=certificate_path, keyfile=certificate_key_path)
+    except FileNotFoundError:
+        logging.error("SSL certificate files not found.")
+        raise
+    except ssl.SSLError as e:
+        logging.error(f"An error occurred while loading SSL certificates: {e}")
+        raise
+
+    app.run(debug=debug_mode, port=web_service_port, ssl_context=context)
