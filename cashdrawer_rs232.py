@@ -1,12 +1,12 @@
 import os
+from flask import Flask, jsonify, request, redirect, url_for, render_template
+import serial
+import serial.tools.list_ports
 import time
 import logging
-import ssl
-import serial
 import configparser
-from flask import Flask, jsonify, request, redirect, url_for, render_template
+import ssl
 from OpenSSL import crypto
-import serial.tools.list_ports
 
 app = Flask(__name__)
 
@@ -40,8 +40,8 @@ log_level = INFO
 ; Description of the serial port where the cash drawer is connected. Default: USB-to-Serial
 port_description = USB-to-Serial
 
-; Command to open the cash drawer. Default: \x1B\x70\x00\x19\xFA
-open_command = \x1B\x70\x00\x19\xFA
+; Command to open the cash drawer. Default: \\x1B\\x70\\x00\\x19\\xFA
+open_command = \\x1B\\x70\\x00\\x19\\xFA
 
 baud_rate = 9600
 
@@ -49,18 +49,19 @@ timeout = 1
 """
 
 def read_config():
-    # Check if the config file exists, if not, create a default one
+    # Check if the config file exists
     if not os.path.exists(config_file_path):
-        with open(config_file_path, 'w') as config_file:
+        # Create a default config file if it doesn't exist
+        with open(config_file_path, 'w', encoding='utf-8') as config_file:
             config_file.write(default_config_content)
-            logging.info(f"Default config file created at {config_file_path}")
+            logging.info("Default config file created at {}".format(config_file_path))
 
     config = configparser.ConfigParser()
-    config.read(config_file_path)
+    config.read(config_file_path, encoding='utf-8')
     return config
 
 def save_config(config):
-    with open(config_file_path, 'w') as config_file:
+    with open(config_file_path, 'w', encoding='utf-8') as config_file:
         config.write(config_file)
     logging.info("Config file updated")
 
@@ -89,33 +90,62 @@ def generate_self_signed_cert(cert_path, key_path):
 
 def find_cash_drawer():
     config = read_config()
-    port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
-    baud_rate = config.getint('cash_drawer_port', 'baud_rate', fallback=9600)
-    timeout = config.getint('cash_drawer_port', 'timeout', fallback=1)
-    open_command = config.get('cash_drawer_port', 'open_command', fallback='\x1B\x70\x00\x19\xFA').encode()
-
+    cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
+    cash_drawer_baud_rate = config.getint('cash_drawer', 'baud_rate', fallback=9600)
+    cash_drawer_timeout = config.getint('cash_drawer', 'timeout', fallback=1)
+    
+    # Start timing
     start_time = time.time()
+    # Get the open command from the configuration
+    open_command = config.get('cash_drawer', 'open_command', fallback='\\x1B\\x70\\x00\\x19\\xFA')
+    
+    # Convert open_command to bytes
+    open_command_bytes = bytes.fromhex(open_command.replace('\\x', ''))
 
+    # Iterate over all available serial ports
     for port in serial.tools.list_ports.comports():
-        if port_description in port.description:
+        # Check if the port description contains the desired string
+        if cash_drawer_port_description in port.description:
             try:
-                with serial.Serial(port.device, baud_rate, timeout=timeout) as ser:
-                    ser.write(open_command)
-                    ser.read(2)  # Adjust read size and timeout as needed
-                execution_time = time.time() - start_time
+                # Open serial port with configurable parameters
+                ser = serial.Serial(port.device, cash_drawer_baud_rate, timeout=cash_drawer_timeout)
+          
+                
+                # The command to open the cash drawer.
+                # This command may vary depending on the manufacturer.
+                # command = b'\x1B\x70\x00\x19\xFA'
+                
+                # Send the command to the cash drawer
+                ser.write(open_command_bytes)
+                
+                # Read response or wait to ensure command execution
+                response = ser.read(2)  # Adjust read size and timeout as needed
+                
+                # Close the serial port
+                ser.close()
+                
+                # Stop timing
+                end_time = time.time()
+                execution_time = end_time - start_time
+                
                 logging.info(f"Cash drawer opened successfully on port {port.device}. Execution time: {execution_time:.2f} seconds")
                 return jsonify({'message': f"Cash drawer opened successfully on port {port.device}. Execution time: {execution_time:.2f} seconds"}), 200
+            
             except Exception as e:
                 logging.error(f"Error on port {port.device}: {e}")
                 return jsonify({'error': f"Error on port {port.device}: {e}"}), 500
-
-    execution_time = time.time() - start_time
+    
+    # If cash drawer is not found
+    end_time = time.time()
+    execution_time = end_time - start_time
     logging.error(f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds")
     return jsonify({'error': f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds"}), 404
 
 @app.route('/')
 def home():
     return render_template('home.html')
+
+
 
 @app.route('/config', methods=['GET', 'POST'])
 def config():
@@ -129,18 +159,19 @@ def config():
             config_content = config_file.read()
         return render_template('config.html', config=config_content)
 
-@app.route('/config/update', methods=['POST'])
+@app.route('/config', methods=['POST'])
 def update_config():
     config = read_config()
     data = request.json
-
+    
     for section, options in data.items():
         if section not in config:
             config.add_section(section)
         for option, value in options.items():
             config.set(section, option, str(value))
-
+    
     save_config(config)
+    
     return jsonify({'message': 'Configuration updated successfully'}), 200
 
 @app.route('/config/reset', methods=['POST'])
@@ -149,6 +180,7 @@ def reset_config():
         config_file.write(default_config_content)
     logging.info("Config file reset")
     return jsonify({'message': 'Configuration reset successfully'}), 200
+# TODO redirect after port update 
 
 @app.route('/open_cash_drawer', methods=['GET'])
 def open_cash_drawer():
@@ -162,10 +194,10 @@ def port():
 @app.route('/port/properties', methods=['GET'])
 def get_port_properties():
     config = read_config()
-    port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
+    cash_drawer_port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
 
     for port in serial.tools.list_ports.comports():
-        if port_description in port.description:
+        if cash_drawer_port_description in port.description:
             port_properties = {
                 'name': port.name,
                 'description': port.description,
@@ -191,17 +223,17 @@ if __name__ == '__main__':
     config = read_config()
     web_service_port = config.getint('web_service', 'port', fallback=8443)
     debug_mode = config.getboolean('web_service', 'debug', fallback=True)
-    log_file_path = config.get('LOG', 'log_file', fallback=os.path.join(executable_dir, 'cash_drawer.log'))
-    log_level = config.get('LOG', 'log_level', fallback='INFO')
+    log_file_path = config.get('web_service', 'log_file', fallback=os.path.join(executable_dir, 'cash_drawer.log'))
+    log_level = config.get('web_service', 'log_level', fallback='INFO')
     certificate_path = config.get('SSL', 'certificate_path', fallback=os.path.join(executable_dir, 'localhost+2.pem'))
     certificate_key_path = config.get('SSL', 'certificate_key_path', fallback=os.path.join(executable_dir, 'localhost+2-key.pem'))
 
     # Convert log level string to integer constant
     log_level = getattr(logging, log_level.upper(), logging.INFO)
-
+    
     logging.basicConfig(filename=log_file_path, level=log_level,
                         format='%(asctime)s - %(levelname)s - %(message)s')
-
+    
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     if not certificate_path or not os.path.exists(certificate_path) or not certificate_key_path or not os.path.exists(certificate_key_path):
         logging.warning("SSL certificate or key not found. Generating self-signed certificate.")
@@ -210,7 +242,7 @@ if __name__ == '__main__':
         if not certificate_key_path:
             certificate_key_path = os.path.join(executable_dir, 'localhost+2-key.pem')
         generate_self_signed_cert(certificate_path, certificate_key_path)
-
+    
     try:
         context.load_cert_chain(certfile=certificate_path, keyfile=certificate_key_path)
     except FileNotFoundError:
