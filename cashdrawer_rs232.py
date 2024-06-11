@@ -1,4 +1,5 @@
 import os
+import sys
 from flask import Flask, jsonify, request, redirect, url_for, render_template
 import serial
 import serial.tools.list_ports
@@ -12,7 +13,28 @@ app = Flask(__name__)
 
 # Get the directory of the executable
 executable_dir = os.path.dirname(os.path.abspath(__file__))
-config_file_path = os.path.join(executable_dir, 'config.ini')
+user_dir = os.path.expanduser('~')
+cashdrawer_dir = os.path.join(user_dir, '.cashdrawer')
+print('Work Directory : ',cashdrawer_dir)
+
+def create_directory(directory_name):
+    """
+    Create a directory if it doesn't exist and return its path.
+    """
+    directory_path = os.path.join(cashdrawer_dir, directory_name)
+    
+    if not os.path.exists(directory_path):
+        os.makedirs(directory_path)
+        print(f"Répertoire de {directory_name} créé à : {directory_path}")
+    else:
+        print(f"Répertoire de {directory_name} existant trouvé à : {directory_path}")
+
+    return directory_path
+
+config_dir = create_directory('conf')
+cert_dir = create_directory('cert')
+log_dir = create_directory('logs')
+config_file_path = os.path.join(config_dir,'config.ini')
 
 # Default configuration content
 default_config_content = """; Configuration file for Cash Drawer Web Service
@@ -23,15 +45,15 @@ default_config_content = """; Configuration file for Cash Drawer Web Service
 port = 8443
 
 [SSL]
-certificate_path = 
-certificate_key_path = 
+certificate_path =
+certificate_key_path =
 
 [LOG]
 ; Enable or disable debug mode. Set to True for development, False for production. Default: True
 debug = True
 
 ; Path to the log file. Specify the location where log messages should be written. Default: cash_drawer.log
-log_file = cash_drawer.log
+log_file =
 
 ; Logging level for the application. Options: DEBUG, INFO, WARNING, ERROR, CRITICAL. Default: INFO
 log_level = INFO
@@ -48,7 +70,7 @@ baud_rate = 9600
 timeout = 1
 """
 
-def read_config():
+def read_config(config_file_path, default_config_content):
     # Check if the config file exists
     if not os.path.exists(config_file_path):
         # Create a default config file if it doesn't exist
@@ -89,7 +111,7 @@ def generate_self_signed_cert(cert_path, key_path):
     logging.info(f"Self-signed certificate and key generated at {cert_path} and {key_path}")
 
 def find_cash_drawer():
-    config = read_config()
+    config = read_config(config_file_path, default_config_content)
     cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
     cash_drawer_baud_rate = config.getint('cash_drawer', 'baud_rate', fallback=9600)
     cash_drawer_timeout = config.getint('cash_drawer', 'timeout', fallback=1)
@@ -110,7 +132,6 @@ def find_cash_drawer():
                 # Open serial port with configurable parameters
                 ser = serial.Serial(port.device, cash_drawer_baud_rate, timeout=cash_drawer_timeout)
           
-                
                 # The command to open the cash drawer.
                 # This command may vary depending on the manufacturer.
                 # command = b'\x1B\x70\x00\x19\xFA'
@@ -147,21 +168,14 @@ def home():
 
 
 
-@app.route('/config', methods=['GET', 'POST'])
-def config():
-    if request.method == 'POST':
-        config_content = request.form['config']
-        with open(config_file_path, 'w') as config_file:
-            config_file.write(config_content)
-        return redirect(url_for('config'))
-    else:
-        with open(config_file_path, 'r') as config_file:
-            config_content = config_file.read()
-        return render_template('config.html', config=config_content)
+@app.route('/config', methods=['GET'])
+def view_config():
+    config = read_config(config_file_path, default_config_content)
+    return jsonify(config._sections), 200
 
 @app.route('/config', methods=['POST'])
 def update_config():
-    config = read_config()
+    config = read_config(config_file_path, default_config_content)
     data = request.json
     
     for section, options in data.items():
@@ -193,7 +207,7 @@ def port():
 
 @app.route('/port/properties', methods=['GET'])
 def get_port_properties():
-    config = read_config()
+    config = read_config(config_file_path, default_config_content)
     cash_drawer_port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
 
     for port in serial.tools.list_ports.comports():
@@ -220,19 +234,35 @@ def get_service_status():
     return jsonify({'status': 'The web service is running.'}), 200
 
 if __name__ == '__main__':
-    config = read_config()
+    config = read_config(config_file_path, default_config_content)
     web_service_port = config.getint('web_service', 'port', fallback=8443)
-    debug_mode = config.getboolean('web_service', 'debug', fallback=True)
-    log_file_path = config.get('web_service', 'log_file', fallback=os.path.join(executable_dir, 'cash_drawer.log'))
-    log_level = config.get('web_service', 'log_level', fallback='INFO')
-    certificate_path = config.get('SSL', 'certificate_path', fallback=os.path.join(executable_dir, 'localhost+2.pem'))
-    certificate_key_path = config.get('SSL', 'certificate_key_path', fallback=os.path.join(executable_dir, 'localhost+2-key.pem'))
+    debug_mode = config.getboolean('LOG', 'debug', fallback=True)
+    log_level = config.get('LOG', 'log_level', fallback='INFO')
+
+    # Get the log file path, with handling for empty values
+    log_file_path = config.get('LOG', 'log_file')
+    if log_file_path=='':
+        log_file_path=os.path.join(log_dir, 'cash-drawer.log')
+
+    certificate_path = config.get('SSL', 'certificate_path')
+    if certificate_path=='':
+        certificate_path=os.path.join(cert_dir, 'localhost+2.pem')
+
+    certificate_key_path = config.get('SSL', 'certificate_key_path')
+    if certificate_key_path=='':
+        certificate_key_path = os.path.join(cert_dir, 'localhost+2-key.pem')
 
     # Convert log level string to integer constant
-    log_level = getattr(logging, log_level.upper(), logging.INFO)
+    log_level = getattr(logging, log_level.upper(), log_level)
     
     logging.basicConfig(filename=log_file_path, level=log_level,
                         format='%(asctime)s - %(levelname)s - %(message)s')
+    
+    logging.info('Configuration file : '+config_file_path)
+    logging.info('log_file_path : '+log_file_path)
+    logging.info('certificate path : '+certificate_path)
+    logging.info('certificate key path : '+certificate_key_path)
+
     
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     if not certificate_path or not os.path.exists(certificate_path) or not certificate_key_path or not os.path.exists(certificate_key_path):
