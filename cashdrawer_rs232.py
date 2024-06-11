@@ -112,51 +112,32 @@ def generate_self_signed_cert(cert_path, key_path):
 
 def find_cash_drawer():
     config = read_config(config_file_path, default_config_content)
-    cash_drawer_port_description = config.get('cash_drawer', 'port_description', fallback='USB-to-Serial')
+    cash_drawer_port_description = config.get('cash_drawer_port', 'port_description', fallback='USB-to-Serial')
     cash_drawer_baud_rate = config.getint('cash_drawer', 'baud_rate', fallback=9600)
     cash_drawer_timeout = config.getint('cash_drawer', 'timeout', fallback=1)
     
-    # Start timing
     start_time = time.time()
-    # Get the open command from the configuration
     open_command = config.get('cash_drawer', 'open_command', fallback='\\x1B\\x70\\x00\\x19\\xFA')
-    
-    # Convert open_command to bytes
     open_command_bytes = bytes.fromhex(open_command.replace('\\x', ''))
 
-    # Iterate over all available serial ports
     for port in serial.tools.list_ports.comports():
-        # Check if the port description contains the desired string
         if cash_drawer_port_description in port.description:
             try:
-                # Open serial port with configurable parameters
-                ser = serial.Serial(port.device, cash_drawer_baud_rate, timeout=cash_drawer_timeout)
-          
-                # The command to open the cash drawer.
-                # This command may vary depending on the manufacturer.
-                # command = b'\x1B\x70\x00\x19\xFA'
-                
-                # Send the command to the cash drawer
-                ser.write(open_command_bytes)
-                
-                # Read response or wait to ensure command execution
-                response = ser.read(2)  # Adjust read size and timeout as needed
-                
-                # Close the serial port
-                ser.close()
-                
-                # Stop timing
+                with serial.Serial(port.device, cash_drawer_baud_rate, timeout=cash_drawer_timeout) as ser:
+                    ser.write(open_command_bytes)
+                    response = ser.read(2)
+                    
                 end_time = time.time()
                 execution_time = end_time - start_time
-                
                 logging.info(f"Cash drawer opened successfully on port {port.device}. Execution time: {execution_time:.2f} seconds")
                 return jsonify({'message': f"Cash drawer opened successfully on port {port.device}. Execution time: {execution_time:.2f} seconds"}), 200
-            
+            except serial.SerialException as e:
+                logging.error(f"Serial error on port {port.device}: {e}")
+                return jsonify({'error': f"Serial error on port {port.device}: {e}"}), 500
             except Exception as e:
-                logging.error(f"Error on port {port.device}: {e}")
-                return jsonify({'error': f"Error on port {port.device}: {e}"}), 500
+                logging.error(f"Unexpected error on port {port.device}: {e}")
+                return jsonify({'error': f"Unexpected error on port {port.device}: {e}"}), 500
     
-    # If cash drawer is not found
     end_time = time.time()
     execution_time = end_time - start_time
     logging.error(f"Could not find the cash drawer. Execution time: {execution_time:.2f} seconds")
@@ -165,8 +146,6 @@ def find_cash_drawer():
 @app.route('/')
 def home():
     return render_template('home.html')
-
-
 
 @app.route('/config', methods=['GET'])
 def view_config():
@@ -185,7 +164,6 @@ def update_config():
             config.set(section, option, str(value))
     
     save_config(config)
-    
     return jsonify({'message': 'Configuration updated successfully'}), 200
 
 @app.route('/config/reset', methods=['POST'])
